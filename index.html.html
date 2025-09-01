@@ -1,0 +1,370 @@
+<!doctype html>
+<html lang="id">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Sholat Meter — Standalone (v10)</title>
+  <style>
+    :root{
+      --emerald-50:#ecfdf5; --emerald-100:#d1fae5; --emerald-200:#a7f3d0; --emerald-300:#6ee7b7; --emerald-400:#34d399; --emerald-500:#10b981; --emerald-600:#059669; --emerald-700:#047857; --emerald-800:#065f46; --emerald-900:#064e3b; --teal-950:#042f2e;
+    }
+    *{box-sizing:border-box}
+    html,body{margin:0;padding:0 16px;font-family:ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,Cantarell,Noto Sans,"Helvetica Neue",Arial,"Apple Color Emoji","Segoe UI Emoji";color:#111827;background:#ffffff;}
+
+    /* ===== HERO ===== */
+    .hero{position:relative;overflow:hidden;color:#064e3b}
+    .hero-bg{height:64px;background:linear-gradient(90deg,var(--emerald-100),var(--emerald-200),var(--emerald-100));position:relative}
+    .hero-overlay{display:none}
+    .badge{display:inline-flex;align-items:center;gap:8px;background:rgba(6,78,59,.5);border:1px solid rgba(6,95,70,.7);color:#e7fff5;border-radius:999px;padding:4px 10px;font-size:12px;backdrop-filter:blur(2px)}
+    .dot{width:8px;height:8px;border-radius:999px;background:#6ee7b7;display:inline-block}
+    h1{margin:12px 0 0;font-size:clamp(28px,4vw,44px);font-weight:800;line-height:1.1}
+    .title-pill{display:inline-block;background:#fff;color:#052e2b;border:1px solid var(--emerald-300);border-radius:16px;padding:8px 14px;box-shadow:0 6px 18px rgba(0,0,0,.15)}
+    .hero-desc{margin-top:12px;max-width:720px;color:#000;background:rgba(255,255,255,.85);backdrop-filter:blur(3px);border-radius:10px;padding:8px 12px;border:1px solid rgba(110,231,183,.4)}
+
+    .panel{margin-top:-16px}
+    .card{background:#fff;border:1px solid var(--emerald-300);border-radius:18px;box-shadow:0 8px 24px rgba(0,0,0,.08);padding:20px}
+
+    /* ===== LAYOUT (stabil & anti-bug) ===== */
+    .grid{display:grid;gap:16px}
+    .grid-inputs{grid-template-columns:1fr}
+    @media(min-width:900px){.grid-inputs{grid-template-columns:1.3fr 1fr 1fr 1.2fr}}
+    .grid-two{grid-template-columns:1fr}
+    @media(min-width:640px){.grid-two{grid-template-columns:1fr 1fr}}
+
+    /* Form fields */
+    .field{min-width:0}
+    label.small{font-size:13px;color:#6b7280;margin:0 0 6px;display:block}
+    input[type="date"],input[type="number"],input[type="text"]{width:100%;padding:10px 12px;border-radius:12px;border:1px solid #d1d5db;outline:none;height:44px;line-height:1}
+    input[type="date"]:focus,input[type="number"]:focus,input[type="text"]:focus{box-shadow:0 0 0 3px rgba(16,185,129,.35);border-color:#059669}
+
+    /* Segmented control pakai radio (lebih stabil) */
+    .segmented{display:flex;gap:8px;background:var(--emerald-50);border:1px solid var(--emerald-200);border-radius:14px;padding:6px;height:44px;align-items:center}
+    .segmented input{position:absolute;opacity:0;pointer-events:none}
+    .segmented label{padding:10px 14px;border-radius:12px;font-size:14px;font-weight:700;color:#065f46;cursor:pointer;user-select:none;line-height:1;border:1px solid transparent}
+    .segmented input:checked + label{background:#fff;border-color:var(--emerald-300);box-shadow:0 2px 10px rgba(0,0,0,.08);color:#064e3b}
+
+    /* Badges */
+    .info-badges{display:flex;flex-wrap:wrap;gap:10px;margin-top:12px;font-size:14px}
+    .info{display:inline-flex;align-items:center;gap:8px;background:var(--emerald-50);border:1px solid var(--emerald-300);color:#064e3b;border-radius:999px;padding:6px 12px}
+    .info.muted{background:#f8fafc;border-color:#e5e7eb;color:#374151}
+
+    /* Stats & table */
+    .stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:16px;margin-top:24px}
+    .stat-card{border:1px solid var(--emerald-300);border-radius:16px;background:#fff;padding:16px;box-shadow:0 1px 0 rgba(0,0,0,.02)}
+    .stat-card .label{font-size:13px;color:#6b7280}
+    .stat-card .value{margin-top:4px;font-size:28px;font-weight:800;letter-spacing:-.01em}
+    .stat-card .sub{margin-top:2px;font-size:12px;color:#6b7280}
+
+    .table-card{margin-top:22px}
+    table{width:100%;border-collapse:collapse;font-size:14px}
+    thead th{color:#6b7280;border-bottom:1px solid #e5e7eb;text-align:left;padding:10px 12px}
+    tbody td{border-bottom:1px solid #e5e7eb;padding:10px 12px}
+    tbody tr:last-child td{border-bottom:0}
+
+    .note{margin-top:22px;background:var(--emerald-50);border:1px solid var(--emerald-300);color:#052e2b;border-radius:16px;padding:14px}
+    .note h4{margin:0 0 6px;font-size:16px}
+    .note ul{margin:8px 0 0 18px;padding:0}
+    .note li{margin:6px 0}
+  @media(min-width:768px){ html,body{ padding:0 28px; } }
+    @media(min-width:1200px){ html,body{ padding:0 40px; } }
+  </style>
+</head>
+<body>
+  <section class="hero">
+    <div class="hero-bg"></div>
+    <div class="hero-overlay"></div>
+    <div class="container" style="padding-top:4px;padding-bottom:8px">
+      <span class="badge"><span class="dot"></span>Sholat Meter · v10 HTML</span>
+      <h1><span class="title-pill">Hitung Jejak Sholat Sejak Baligh</span></h1>
+      <p class="hero-desc">Masukkan tanggal lahir, pilih Masehi/Hijriyah, dan lihat estimasi jumlah sholat serta gerakan sejak awal baligh.</p>
+    </div>
+  </section>
+
+  <main class="container panel">
+    <!-- INPUT STRIP -->
+    <section class="card">
+      <div class="grid grid-inputs">
+        <!-- Tanggal lahir -->
+        <div class="field">
+          <label class="small">Tanggal lahir</label>
+          <div style="display:flex;align-items:center;gap:10px">
+            <input id="dob" type="date" />
+            <span class="small" style="color:#6b7280;white-space:nowrap">s.d.</span>
+            <input id="asof" type="date" />
+          </div>
+        </div>
+
+        <!-- Patokan baligh -->
+        <div class="field">
+          <label class="small">Patokan baligh</label>
+          <div class="segmented" role="radiogroup" aria-label="Patokan baligh">
+            <input type="radio" name="mode" id="mode-masehi" value="masehi" checked>
+            <label for="mode-masehi">13 thn Masehi</label>
+            <input type="radio" name="mode" id="mode-hijri" value="hijri">
+            <label for="mode-hijri">13 thn Hijriyah (estimasi)</label>
+          </div>
+        </div>
+
+        <!-- Profil -->
+        <div class="field">
+          <label class="small">Profil</label>
+          <div class="segmented" role="radiogroup" aria-label="Profil">
+            <input type="radio" name="sex" id="sex-male" value="male" checked>
+            <label for="sex-male">Laki-laki</label>
+            <input type="radio" name="sex" id="sex-female" value="female">
+            <label for="sex-female">Perempuan</label>
+          </div>
+        </div>
+
+        <!-- Tanggal baligh (opsional) -->
+        <div class="field">
+          <label class="small">Tanggal baligh (opsional)</label>
+          <div style="display:flex;align-items:center;gap:12px">
+            <label style="display:flex;align-items:center;gap:8px;white-space:nowrap">
+              <input id="override" type="checkbox" />
+              <span class="small" style="margin:0;color:#374151">Gunakan</span>
+            </label>
+            <input id="baligh" type="date" disabled />
+          </div>
+        </div>
+      </div>
+
+      <!-- Khusus Perempuan -->
+      <div id="female-inputs" class="grid grid-two" style="margin-top:12px;display:none">
+        <div class="field">
+          <label class="small">Haid (rata-rata hari/bulan)</label>
+          <input id="haid" type="number" min="0" step="1" value="6" />
+        </div>
+        <div class="field">
+          <label class="small">Nifas (total hari, opsional)</label>
+          <input id="nifas" type="number" min="0" step="1" placeholder="misal 40" />
+          <div class="small" style="color:#6b7280;margin-top:6px">Masukkan total hari nifas yang pernah dialami (boleh dikosongkan).</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- INFO BADGES -->
+    <div class="info-badges">
+      <span id="badge-mode" class="info"><span class="dot"></span>Patokan 13 tahun Masehi</span>
+      <span id="badge-override" class="info muted" style="display:none"></span>
+      <span id="badge-haid" class="info muted" style="display:none"></span>
+      <span id="badge-nifas" class="info muted" style="display:none"></span>
+    </div>
+
+    <!-- SUMMARY STATS -->
+    <section class="stats">
+      <div class="stat-card">
+        <div class="label">Total hari sejak baligh</div>
+        <div id="totalDays" class="value">—</div>
+        <div id="totalDaysSub" class="sub"></div>
+      </div>
+      <div class="stat-card">
+        <div class="label">Hari perhitungan sholat</div>
+        <div id="daysCounted" class="value">—</div>
+        <div id="daysCountedSub" class="sub">Sejak baligh</div>
+      </div>
+      <div class="stat-card">
+        <div class="label">Sholat wajib (total)</div>
+        <div id="totalPrayers" class="value">—</div>
+        <div class="sub">5× per hari</div>
+      </div>
+    </section>
+
+    <!-- MOVEMENTS GRID -->
+    <section class="stats">
+      <div class="stat-card"><div class="label">Rakaat (total)</div><div id="tRakaat" class="value">—</div><div class="sub">17× per hari</div></div>
+      <div class="stat-card"><div class="label">Rukuk (total)</div><div id="tRuku" class="value">—</div><div class="sub">1× per rakaat</div></div>
+      <div class="stat-card"><div class="label">I'tidal (total)</div><div id="tItidal" class="value">—</div><div class="sub">1× per rakaat</div></div>
+      <div class="stat-card"><div class="label">Sujud (total)</div><div id="tSujud" class="value">—</div><div class="sub">2× per rakaat</div></div>
+      <div class="stat-card"><div class="label">Duduk antara dua sujud (total)</div><div id="tDuduk" class="value">—</div><div class="sub">1× per rakaat</div></div>
+      <div class="stat-card"><div class="label">Tasyahud Awal (total)</div><div id="tTasyAwal" class="value">—</div><div class="sub">Zuhur, Asar, Magrib, Isya</div></div>
+      <div class="stat-card"><div class="label">Tasyahud Akhir (total)</div><div id="tTasyAkhir" class="value">—</div><div class="sub">1× per sholat</div></div>
+      <div class="stat-card"><div class="label">Takbiratul Ihram (total)</div><div id="tTakbirIhram" class="value">—</div><div class="sub">1× per sholat</div></div>
+      <div class="stat-card"><div class="label">Salam (total)</div><div id="tSalam" class="value">—</div><div class="sub">2× per sholat</div></div>
+      <div class="stat-card"><div class="label">Takbir transisi (estimasi)</div><div id="tTakbirTrans" class="value">—</div><div class="sub">~90× per hari</div></div>
+    </section>
+
+    <!-- PER WAKTU TABLE -->
+    <section class="table-card card">
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:12px">
+        <h3 style="margin:0">Rincian per waktu</h3>
+        <span class="info" style="font-size:12px">Subuh · Zuhur · Asar · Magrib · Isya</span>
+      </div>
+      <div style="overflow:auto;margin-top:10px">
+        <table>
+          <thead><tr><th>Waktu</th><th>Jumlah sholat</th><th>Total rakaat</th></tr></thead>
+          <tbody id="perPrayerBody">
+            <tr><td colspan="3" style="color:#6b7280">Masukkan tanggal lahir untuk melihat rincian.</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- NOTES -->
+    <section class="note">
+      <h4>Catatan</h4>
+      <ul>
+        <li>Perhitungan estimasi berdasarkan sholat fardhu 5 waktu per hari sejak baligh.</li>
+        <li>Mode <strong>Hijriyah</strong> memakai estimasi 354,367 hari/tahun; kalender aktual bisa berbeda beberapa hari.</li>
+        <li>Untuk akurasi tinggi, isi tanggal baligh (opsional) jika diingat.</li>
+        <li>Perempuan: Haid dihitung sebagai rata-rata hari/bulan; Nifas bersifat opsional sebagai total hari yang pernah dialami.</li>
+      </ul>
+    </section>
+  </main>
+
+  <script>
+    // ===== Util =====
+    function nf(n){ var v=Math.max(0,Math.floor(n||0)); return new Intl.NumberFormat('id-ID').format(v); }
+    function toISO(d){ var y=d.getFullYear(), m=String(d.getMonth()+1).padStart(2,'0'), dd=String(d.getDate()).padStart(2,'0'); return y+'-'+m+'-'+dd; }
+    function mid(d){ var x=new Date(d); return new Date(x.getFullYear(),x.getMonth(),x.getDate()); }
+    function addY(d,y){ var x=new Date(d); x.setFullYear(x.getFullYear()+y); return x; }
+    function addD(d,days){ var x=new Date(d); x.setDate(x.getDate()+days); return x; }
+    function diffDays(a,b){ var A=mid(a), B=mid(b); return Math.floor((B.getTime()-A.getTime())/(1000*60*60*24)); }
+    function monthsApprox(a,b){ return diffDays(a,b)/30.437; }
+
+    // ===== Elements =====
+    var elDob = document.getElementById('dob');
+    var elAsOf = document.getElementById('asof');
+    var elModeRadios = document.querySelectorAll('input[name="mode"]');
+    var elSexRadios = document.querySelectorAll('input[name="sex"]');
+    var elOverride = document.getElementById('override');
+    var elBaligh = document.getElementById('baligh');
+    var elFemaleWrap = document.getElementById('female-inputs');
+    var elHaid = document.getElementById('haid');
+    var elNifas = document.getElementById('nifas');
+
+    var elBadgeMode = document.getElementById('badge-mode');
+    var elBadgeOverride = document.getElementById('badge-override');
+    var elBadgeHaid = document.getElementById('badge-haid');
+    var elBadgeNifas = document.getElementById('badge-nifas');
+
+    var elTotalDays = document.getElementById('totalDays');
+    var elTotalDaysSub = document.getElementById('totalDaysSub');
+    var elDaysCounted = document.getElementById('daysCounted');
+    var elDaysCountedSub = document.getElementById('daysCountedSub');
+    var elTotalPrayers = document.getElementById('totalPrayers');
+
+    var elTRakaat = document.getElementById('tRakaat');
+    var elTRuku = document.getElementById('tRuku');
+    var elTItidal = document.getElementById('tItidal');
+    var elTSujud = document.getElementById('tSujud');
+    var elTDuduk = document.getElementById('tDuduk');
+    var elTTasyAwal = document.getElementById('tTasyAwal');
+    var elTTasyAkhir = document.getElementById('tTasyAkhir');
+    var elTTakbirIhram = document.getElementById('tTakbirIhram');
+    var elTSalam = document.getElementById('tSalam');
+    var elTTakbirTrans = document.getElementById('tTakbirTrans');
+
+    var elPerPrayerBody = document.getElementById('perPrayerBody');
+
+    // ===== Initialize dates =====
+    (function init(){ var today = mid(new Date()); elAsOf.value = toISO(today); })();
+
+    // ===== Event wiring =====
+    [elDob, elAsOf, elBaligh, elHaid, elNifas].forEach(function(el){ el.addEventListener('change', render); el.addEventListener('input', render); });
+    elModeRadios.forEach(function(r){ r.addEventListener('change', render); });
+    elSexRadios.forEach(function(r){ r.addEventListener('change', function(){ toggleFemale(); render(); }); });
+    elOverride.addEventListener('change', function(){ elBaligh.disabled = !elOverride.checked; render(); });
+
+    function toggleFemale(){
+      var sex = document.querySelector('input[name="sex"]:checked').value;
+      elFemaleWrap.style.display = (sex==='female') ? 'grid' : 'none';
+    }
+
+    // ===== Compute & Render =====
+    function render(){
+      var dobVal = elDob.value ? new Date(elDob.value) : null;
+      var asOfVal = elAsOf.value ? new Date(elAsOf.value) : null;
+      if(!dobVal || !asOfVal){ setAllPlaceholders(); return; }
+
+      var mode = document.querySelector('input[name="mode"]:checked').value; // 'masehi' | 'hijri'
+      var sex = document.querySelector('input[name="sex"]:checked').value;   // 'male' | 'female'
+
+      // baligh auto
+      var balighAuto = null;
+      if(mode==='masehi') balighAuto = addY(dobVal,13); else { var days = Math.round(13*354.367); balighAuto = addD(dobVal, days); }
+      var balighDate = (elOverride.checked && elBaligh.value) ? new Date(elBaligh.value) : balighAuto;
+      if(!balighDate){ setAllPlaceholders(); return; }
+
+      var totalDays = Math.max(0, diffDays(balighDate, asOfVal));
+      var months = Math.max(0, monthsApprox(balighDate, asOfVal));
+
+      var haidDays = 0, nifasDays = 0;
+      if(sex==='female'){
+        var hpm = Number(elHaid.value)||0; if(hpm<0) hpm=0; haidDays = Math.floor(hpm * months);
+        var n = Number(elNifas.value)||0; if(n<0) n=0; nifasDays = Math.floor(n);
+        if(haidDays + nifasDays > totalDays) nifasDays = Math.max(0, totalDays - haidDays);
+      }
+
+      var daysCounted = Math.max(0, totalDays - haidDays - nifasDays);
+
+      // per-day constants
+      var prayersPerDay=5, rakaatPerDay=17, rukuPerDay=17, itidalPerDay=17, sujudPerDay=34, dudukPerDay=17, tasyAwalPerDay=4, tasyAkhirPerDay=5, takbirIhramPerDay=5, salamPerDay=10, takbirTransPerDay=90;
+
+      // totals
+      var totals = {
+        prayers: daysCounted*prayersPerDay,
+        rakaat: daysCounted*rakaatPerDay,
+        ruku: daysCounted*rukuPerDay,
+        itidal: daysCounted*itidalPerDay,
+        sujud: daysCounted*sujudPerDay,
+        duduk: daysCounted*dudukPerDay,
+        tasyAwal: daysCounted*tasyAwalPerDay,
+        tasyAkhir: daysCounted*tasyAkhirPerDay,
+        takbirIhram: daysCounted*takbirIhramPerDay,
+        salam: daysCounted*salamPerDay,
+        takbirTrans: daysCounted*takbirTransPerDay
+      };
+
+      // badges
+      elBadgeMode.textContent = mode==='masehi' ? 'Patokan 13 tahun Masehi' : 'Patokan 13 tahun Hijriyah (estimasi)';
+      if(elOverride.checked && elBaligh.value){ elBadgeOverride.style.display='inline-flex'; elBadgeOverride.className='info'; elBadgeOverride.textContent='Tanggal baligh dipakai: '+elBaligh.value; }
+      else { elBadgeOverride.style.display='none'; }
+
+      if(sex==='female'){
+        elBadgeHaid.style.display='inline-flex'; elBadgeHaid.className='info muted'; elBadgeHaid.textContent='Haid: ± '+((Number(elHaid.value)||0))+' hari/bulan';
+        var nv = Number(elNifas.value)||0; if(nv>0){ elBadgeNifas.style.display='inline-flex'; elBadgeNifas.className='info muted'; elBadgeNifas.textContent='Nifas (total): '+nv+' hari'; } else { elBadgeNifas.style.display='none'; }
+      } else { elBadgeHaid.style.display='none'; elBadgeNifas.style.display='none'; }
+
+      // top stats
+      elTotalDays.textContent = nf(totalDays);
+      elTotalDaysSub.textContent = toISO(balighDate)+' → '+toISO(asOfVal);
+      elDaysCounted.textContent = nf(daysCounted);
+      elDaysCountedSub.textContent = (sex==='female') ? 'Disesuaikan Haid & Nifas' : 'Sejak baligh';
+      elTotalPrayers.textContent = nf(totals.prayers);
+
+      // movement stats
+      elTRakaat.textContent = nf(totals.rakaat);
+      elTRuku.textContent = nf(totals.ruku);
+      elTItidal.textContent = nf(totals.itidal);
+      elTSujud.textContent = nf(totals.sujud);
+      elTDuduk.textContent = nf(totals.duduk);
+      elTTasyAwal.textContent = nf(totals.tasyAwal);
+      elTTasyAkhir.textContent = nf(totals.tasyAkhir);
+      elTTakbirIhram.textContent = nf(totals.takbirIhram);
+      elTSalam.textContent = nf(totals.salam);
+      elTTakbirTrans.textContent = nf(totals.takbirTrans);
+
+      // per prayer table
+      var rows = [
+        {name:'Subuh', r:2}, {name:'Zuhur', r:4}, {name:'Asar', r:4}, {name:'Magrib', r:3}, {name:'Isya', r:4}
+      ].map(function(p){
+        var sh = daysCounted; var rk = daysCounted*p.r;
+        return '<tr><td>'+p.name+'</td><td>'+nf(sh)+'</td><td>'+nf(rk)+'</td></tr>';
+      }).join('');
+      if(daysCounted===0){ rows = '<tr><td colspan="3" style="color:#6b7280">Masukkan tanggal lahir untuk melihat rincian.</td></tr>'; }
+      elPerPrayerBody.innerHTML = rows;
+    }
+
+    function setAllPlaceholders(){
+      [elTotalDays,elDaysCounted,elTotalPrayers,elTRakaat,elTRuku,elTItidal,elTSujud,elTDuduk,elTTasyAwal,elTTasyAkhir,elTTakbirIhram,elTSalam,elTTakbirTrans].forEach(function(el){ el.textContent='—'; });
+      elTotalDaysSub.textContent=''; elDaysCountedSub.textContent='Sejak baligh';
+      elPerPrayerBody.innerHTML = '<tr><td colspan="3" style="color:#6b7280">Masukkan tanggal lahir untuk melihat rincian.</td></tr>';
+    }
+
+    // First render & ensure female section hidden by default
+    toggleFemale();
+    render();
+  </script>
+</body>
+</html>
